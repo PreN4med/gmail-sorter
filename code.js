@@ -27,7 +27,7 @@ function getOrCreateLabel_(name) {
 function sortInbox() {
   const done = getOrCreateLabel_(DONE_LABEL);
 
-  RULES.forEach((rule) => {
+  getRules().forEach((rule) => {
     const label = getOrCreateLabel_(rule.label);
     const q = `in:inbox ${LOOKBACK} -label:${DONE_LABEL} (${rule.query})`;
     const threads = GmailApp.search(q, 0, 100);
@@ -37,6 +37,37 @@ function sortInbox() {
     done.addToThreads(threads);
     if (ARCHIVE_AFTER_LABEL) GmailApp.moveThreadsToArchive(threads);
   });
+}
+
+function getRules() {
+  const saved = PropertiesService.getScriptProperties().getProperty("RULES");
+  return saved ? JSON.parse(saved) : DEFAULT_RULES;
+}
+
+function saveRules(rules) {
+  const clean = rules
+    .map((r) => ({
+      label: String(r.label).trim(),
+      query: String(r.query).trim(),
+    }))
+    .filter((r) => r.label && r.query);
+  PropertiesService.getScriptProperties().setProperty(
+    "RULES",
+    JSON.stringify(clean),
+  );
+  return clean;
+}
+
+function previewRule(query) {
+  return GmailApp.search(`in:inbox (${query})`, 0, 5).map((t) =>
+    t.getFirstMessageSubject(),
+  );
+}
+
+function doGet() {
+  return HtmlService.createHtmlOutputFromFile("Index").setTitle(
+    "Gmail Sorter Rules",
+  );
 }
 
 // use to make it run automatically every 5 minutes
